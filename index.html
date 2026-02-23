@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日常点検表管理システム - スプレッドシート連携版</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f5f5f5;
+            padding-bottom: 80px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 { font-size: 24px; margin-bottom: 5px; }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            background: white;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: #f0f0f0;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .tab-btn.active { background: #667eea; color: white; }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .form-group { margin-bottom: 15px; }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        
+        input[type="number"] { -moz-appearance: textfield; }
+        input:read-only { background-color: #f8f9fa; color: #495057; }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .info-grid-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .auto-calc {
+            background: #e7f3ff;
+            border-color: #2196F3;
+            font-weight: 600;
+        }
+        
+        .inspection-section {
+            margin-top: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .section-header {
+            background: #667eea;
+            color: white;
+            padding: 12px 15px;
+            font-weight: 600;
+            font-size: 15px;
+        }
+        
+        .inspection-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .inspection-table th {
+            background: #f8f9fa;
+            padding: 10px;
+            text-align: left;
+            font-size: 13px;
+            border-bottom: 2px solid #dee2e6;
+        }
+        
+        .inspection-table td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .check-buttons { display: flex; gap: 8px; }
+        
+        .check-btn {
+            flex: 1;
+            padding: 8px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .check-btn.selected-ok {
+            border-color: #28a745;
+            background: #d4edda;
+            color: #155724;
+            font-weight: 600;
+        }
+        
+        .check-btn.selected-ng {
+            border-color: #dc3545;
+            background: #f8d7da;
+            color: #721c24;
+            font-weight: 600;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+        
+        .btn-primary { background: #667eea; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #667eea;
+            margin: 25px 0 15px 0;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        .history-item {
+            background: white;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border-left: 4px solid #28a745;
+            cursor: pointer;
+        }
+        
+        .history-item.abnormal { border-left-color: #dc3545; }
+        
+        .search-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .search-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .sync-status {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .sync-online { background: #d4edda; color: #155724; }
+        .sync-offline { background: #f8d7da; color: #721c24; }
+        
+        @media (max-width: 600px) {
+            .info-grid-2col { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚗 日常点検表管理システム</h1>
+        <p>スプレッドシート連携版 <span id="syncStatus" class="sync-status sync-online">● オンライン</span></p>
+    </div>
+    
+    <div class="container">
+        <div class="tab-buttons">
+            <button class="tab-btn active" onclick="switchTab('new')">新規点検</button>
+            <button class="tab-btn" onclick="switchTab('history')">点検履歴</button>
+            <button class="tab-btn" onclick="switchTab('export')">Excel出力</button>
+        </div>
+        
+        <!-- 新規点検タブ -->
+        <div id="tab-new" class="tab-content active">
+            <div class="card">
+                <h2>新規点検入力</h2>
+                
+                <form id="inspectionForm" onsubmit="saveInspection(event)">
+                    <div class="section-title">基本情報</div>
+                    <div class="info-grid">
+                        <div class="form-group">
+                            <label>点検日 <span style="color: red;">*</span></label>
+                            <input type="date" id="inspectionDate" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>登録番号・車番 <span style="color: red;">*</span></label>
+                            <input type="text" id="vehicleNumber" placeholder="例: 品川500あ1234" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>行先</label>
+                            <input type="text" id="destination" placeholder="例: ○○現場">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>工番</label>
+                            <input type="text" id="projectNumber" placeholder="例: 2024-001">
+                        </div>
+                    </div>
+                    
+                    <div class="section-title">運転・点検者</div>
+                    <div class="info-grid-2col">
+                        <div class="form-group">
+                            <label>運転者 <span style="color: red;">*</span></label>
+                            <input type="text" id="driverName" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>点検実施者 <span style="color: red;">*</span></label>
+                            <input type="text" id="inspectorName" required>
+                        </div>
+                    </div>
+                    
+                    <div class="section-title">燃料・オイル</div>
+                    <div class="info-grid-2col">
+                        <div class="form-group">
+                            <label>燃料給油量 (L)</label>
+                            <input type="number" id="fuelAmount" step="0.1" min="0">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>オイル給油量 (L)</label>
+                            <input type="number" id="oilAmount" step="0.1" min="0">
+                        </div>
+                    </div>
+                    
+                    <div class="section-title">走行距離（任意）</div>
+                    <div class="info-grid">
+                        <div class="form-group">
+                            <label>前回総距離 (km)</label>
+                            <small style="color: #666;">前の日の走行距離</small>
+                            <input type="number" id="previousOdometer" step="0.1" min="0" onchange="calculateDistance()">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>今回総距離 (km)</label>
+                            <small style="color: #666;">点検時の走行距離</small>
+                            <input type="number" id="currentOdometer" step="0.1" min="0" onchange="calculateDistance()">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>走行距離 (km)</label>
+                            <small style="color: #666;">自動計算（今回 - 前回）</small>
+                            <input type="number" id="travelDistance" step="0.1" readonly class="auto-calc">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>運行中の異状箇所</label>
+                        <input type="text" id="abnormalLocation">
+                    </div>
+                    
+                    <div class="section-title">写真添付（任意）</div>
+                    <div class="form-group">
+                        <label>写真（1〜2枚、各100KB以下推奨）</label>
+                        <input type="file" id="photoInput" accept="image/*" multiple onchange="handlePhotoUpload()" style="display: none;">
+                        <button type="button" class="btn btn-primary" onclick="document.getElementById('photoInput').click()" style="background: #28a745;">📷 写真を選択</button>
+                        <div id="photoPreview" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;"></div>
+                    </div>
+                    
+                    <div id="inspectionSections"></div>
+                    
+                    <button type="submit" class="btn btn-primary">✓ 点検を保存（スプレッドシートに送信）</button>
+                </form>
+            </div>
+        </div>
+        
+        <!-- 点検履歴タブ -->
+        <div id="tab-history" class="tab-content">
+            <div class="card">
+                <h2>点検履歴（全員共有）</h2>
+                
+                <div class="search-box">
+                    <h3 style="margin-bottom: 10px;">🔍 検索</h3>
+                    <div class="search-grid">
+                        <input type="date" id="searchDate" placeholder="点検日">
+                        <input type="text" id="searchVehicle" placeholder="車両番号">
+                        <input type="text" id="searchDriver" placeholder="運転者">
+                        <button class="btn btn-primary" onclick="searchHistory()" style="padding: 10px;">検索</button>
+                    </div>
+                </div>
+                
+                <div id="historyList" class="loading">読み込み中...</div>
+            </div>
+        </div>
+        
+        <!-- Excel出力タブ -->
+        <div id="tab-export" class="tab-content">
+            <div class="card">
+                <h2>📊 月次Excel出力</h2>
+                
+                <div style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center;">
+                    <label>出力月:</label>
+                    <input type="month" id="exportMonth" style="width: 200px;">
+                    <button class="btn btn-success" onclick="exportMonthlyExcel()" style="width: auto; padding: 10px 20px; margin: 0;">
+                        📗 月次Excel出力
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+// Google Apps ScriptのURL
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbypMT9HMEzoMRPAhjah6r1i3_imWpGUMDFc9RPg8m134Z8DXzG2NIdeYUThmNx7wqedJQ/exec';
+
+let allHistory = [];
+let photoData = [];
+
+// 点検項目定義
+const inspectionSections = [
+    {
+        title: '運転席での点検',
+        items: [
+            { name: 'ブレーキ・ペダル', detail: '踏みしろ、ブレーキのきき' },
+            { name: '駐車ブレーキ・レバー', detail: '引きしろ（踏みしろ）' },
+            { name: '原動機（エンジン）', detail: 'かかり具合、異音' },
+            { name: 'ウィンド・ウォッシャ', detail: '噴射状態' },
+            { name: 'ワイパー', detail: '拭き取りの状態' }
+        ]
+    },
+    {
+        title: 'エンジン・ルームの点検',
+        items: [
+            { name: 'ウォッシャ・タンク', detail: '液量' },
+            { name: 'ブレーキのリザーバ・タンク', detail: '液量' },
+            { name: 'バッテリ', detail: '液量' },
+            { name: 'ラジエータ', detail: '水量' },
+            { name: '潤滑装置', detail: 'エンジン・オイルの量' },
+            { name: 'ファン・ベルト', detail: '張り具合、損傷' }
+        ]
+    },
+    {
+        title: '車の周りからの点検',
+        items: [
+            { name: '灯火装置、方向指示器', detail: '点灯・点滅具合' },
+            { name: 'タイヤ（空気圧）', detail: '空気圧' },
+            { name: 'タイヤ（亀裂・損傷）', detail: '亀裂、損傷' },
+            { name: 'タイヤ（異状な摩耗）', detail: '異状な摩耗' },
+            { name: 'タイヤ（溝の深さ）', detail: '溝の深さ' }
+        ]
+    }
+];
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('inspectionDate').valueAsDate = new Date();
+    document.getElementById('exportMonth').value = new Date().toISOString().substr(0, 7);
+    renderInspectionForm();
+    loadHistory();
+    
+    // 車両番号入力時に前回総距離を自動設定
+    document.getElementById('vehicleNumber').addEventListener('blur', function() {
+        setPreviousOdometer(this.value);
+    });
+});
+
+async function setPreviousOdometer(vehicleNumber) {
+    if (!vehicleNumber) return;
+    
+    try {
+        // スプレッドシートから該当車両の最新データを取得
+        const response = await fetch(SCRIPT_URL + '?vehicle=' + encodeURIComponent(vehicleNumber));
+        const result = await response.json();
+        
+        if (result.status === 'success' && result.data.length > 0) {
+            // 最新の今回総距離を前回総距離に設定
+            const latestData = result.data[result.data.length - 1];
+            const lastOdometer = latestData['今回総距離(km)'];
+            
+            if (lastOdometer && lastOdometer > 0) {
+                document.getElementById('previousOdometer').value = lastOdometer;
+                // 説明を追加
+                const label = document.querySelector('label[for="previousOdometer"]');
+                if (label) {
+                    const small = label.nextElementSibling;
+                    if (small) {
+                        small.textContent = `前回: ${lastOdometer} km（自動取得）`;
+                        small.style.color = '#28a745';
+                        small.style.fontWeight = '600';
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.log('前回データの取得に失敗しました');
+    }
+}
+
+function renderInspectionForm() {
+    const container = document.getElementById('inspectionSections');
+    let html = '<div class="section-title">点検項目</div>';
+    
+    inspectionSections.forEach((section, sectionIdx) => {
+        html += `
+            <div class="inspection-section">
+                <div class="section-header">${section.title}</div>
+                <table class="inspection-table">
+                    <thead>
+                        <tr>
+                            <th>点検箇所</th>
+                            <th>判定</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        section.items.forEach((item, itemIdx) => {
+            const itemId = `item_${sectionIdx}_${itemIdx}`;
+            html += `
+                <tr>
+                    <td>
+                        <strong>${item.name}</strong><br>
+                        <small style="color: #666;">${item.detail}</small>
+                    </td>
+                    <td>
+                        <div class="check-buttons">
+                            <button type="button" class="check-btn" data-item="${itemId}" data-value="OK" onclick="selectCheck(this)">良好</button>
+                            <button type="button" class="check-btn" data-item="${itemId}" data-value="NG" onclick="selectCheck(this)">異常</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        html += '</tbody></table></div>';
+    });
+    
+    container.innerHTML = html;
+}
+
+function selectCheck(button) {
+    const itemId = button.dataset.item;
+    document.querySelectorAll(`[data-item="${itemId}"]`).forEach(btn => {
+        btn.classList.remove('selected-ok', 'selected-ng');
+    });
+    
+    if (button.dataset.value === 'OK') {
+        button.classList.add('selected-ok');
+    } else {
+        button.classList.add('selected-ng');
+    }
+}
+
+function calculateDistance() {
+    const previous = parseFloat(document.getElementById('previousOdometer').value) || 0;
+    const current = parseFloat(document.getElementById('currentOdometer').value) || 0;
+    
+    if (current >= previous && current > 0) {
+        document.getElementById('travelDistance').value = (current - previous).toFixed(1);
+    }
+}
+
+function handlePhotoUpload() {
+    const files = document.getElementById('photoInput').files;
+    const preview = document.getElementById('photoPreview');
+    photoData = [];
+    preview.innerHTML = '';
+    
+    if (files.length > 2) {
+        alert('写真は2枚までです');
+        document.getElementById('photoInput').value = '';
+        return;
+    }
+    
+    Array.from(files).forEach((file, index) => {
+        if (file.size > 100 * 1024) {
+            alert(`写真${index + 1}が大きすぎます（100KB以下にしてください）`);
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            photoData.push(e.target.result);
+            
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            img.style.width = '100px';
+            img.style.height = '100px';
+            img.style.objectFit = 'cover';
+            img.style.borderRadius = '8px';
+            img.style.border = '2px solid #ddd';
+            preview.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+async function saveInspection(event) {
+    event.preventDefault();
+    
+    const results = {};
+    let hasAbnormal = false;
+    let allChecked = true;
+    
+    inspectionSections.forEach((section, sectionIdx) => {
+        section.items.forEach((item, itemIdx) => {
+            const itemId = `item_${sectionIdx}_${itemIdx}`;
+            const selectedBtn = document.querySelector(`[data-item="${itemId}"].selected-ok, [data-item="${itemId}"].selected-ng`);
+            
+            if (!selectedBtn) {
+                allChecked = false;
+                return;
+            }
+            
+            const value = selectedBtn.dataset.value;
+            results[item.name] = { value: value, detail: item.detail };
+            
+            if (value === 'NG') hasAbnormal = true;
+        });
+    });
+    
+    if (!allChecked) {
+        alert('全ての点検項目をチェックしてください');
+        return;
+    }
+    
+    const inspection = {
+        '点検日': document.getElementById('inspectionDate').value,
+        '車両番号': document.getElementById('vehicleNumber').value,
+        '行先': document.getElementById('destination').value,
+        '工番': document.getElementById('projectNumber').value,
+        '運転者': document.getElementById('driverName').value,
+        '点検者': document.getElementById('inspectorName').value,
+        '燃料(L)': parseFloat(document.getElementById('fuelAmount').value) || '',
+        'オイル(L)': parseFloat(document.getElementById('oilAmount').value) || '',
+        '前回総距離(km)': parseFloat(document.getElementById('previousOdometer').value) || '',
+        '今回総距離(km)': parseFloat(document.getElementById('currentOdometer').value) || '',
+        '走行距離(km)': parseFloat(document.getElementById('travelDistance').value) || '',
+        '異常箇所': document.getElementById('abnormalLocation').value,
+        '異常有無': hasAbnormal ? '異常あり' : '正常'
+    };
+    
+    // 点検項目を個別フィールドとして追加
+    Object.keys(results).forEach(key => {
+        inspection[key] = results[key].value;
+    });
+    
+    try {
+        document.getElementById('syncStatus').textContent = '● 送信中...';
+        document.getElementById('syncStatus').className = 'sync-status sync-offline';
+        
+        const response = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(inspection)
+        });
+        
+        document.getElementById('syncStatus').textContent = '● オンライン';
+        document.getElementById('syncStatus').className = 'sync-status sync-online';
+        
+        if (hasAbnormal) {
+            const abnormalItems = Object.keys(results).filter(key => results[key].value === 'NG');
+            alert('⚠️ 異常が検出されました！\n\n車両番号: ' + inspection['車両番号'] + 
+                  '\n異常項目:\n' + abnormalItems.join('\n') + 
+                  '\n\nスプレッドシートに記録されました。管理者に連絡してください。');
+        } else {
+            alert('✓ 点検データを保存しました！\nスプレッドシートに記録されました。');
+        }
+        
+        document.getElementById('inspectionForm').reset();
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        document.getElementById('inspectionDate').value = `${yyyy}-${mm}-${dd}`;
+        document.querySelectorAll('.check-btn').forEach(btn => {
+            btn.classList.remove('selected-ok', 'selected-ng');
+        });
+        
+        setTimeout(() => loadHistory(), 2000);
+        
+    } catch (error) {
+        document.getElementById('syncStatus').textContent = '● オフライン';
+        document.getElementById('syncStatus').className = 'sync-status sync-offline';
+        alert('エラー: データの送信に失敗しました。ネットワーク接続を確認してください。');
+    }
+}
+
+async function loadHistory() {
+    try {
+        const response = await fetch(SCRIPT_URL);
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            allHistory = result.data;
+            displayHistory(allHistory);
+        }
+    } catch (error) {
+        document.getElementById('historyList').innerHTML = '<p style="color: #dc3545;">データの読み込みに失敗しました</p>';
+    }
+}
+
+function displayHistory(data) {
+    const container = document.getElementById('historyList');
+    
+    if (data.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #999; padding: 40px;">まだ点検履歴がありません</p>';
+        return;
+    }
+    
+    let html = '';
+    data.slice().reverse().forEach((item, index) => {
+        const borderClass = item['異常有無'] === '異常あり' ? 'abnormal' : '';
+        html += `
+            <div class="history-item ${borderClass}" onclick="showDetail('${item['登録日時']}')">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="font-weight: 600; margin-bottom: 5px;">${item['点検日']}</div>
+                    <button class="btn btn-primary" style="padding: 5px 15px; margin: 0; width: auto;" onclick="event.stopPropagation(); showDetail('${item['登録日時']}')">詳細・編集</button>
+                </div>
+                <div style="color: #666; font-size: 14px;">
+                    🚗 ${item['車両番号']} | 👤 ${item['運転者']} | 点検: ${item['点検者']}
+                </div>
+                <div style="color: #666; font-size: 13px; margin-top: 3px;">
+                    📍 ${item['行先'] || '-'} | 工番: ${item['工番'] || '-'}
+                </div>
+                ${item['異常有無'] === '異常あり' ? `<div style="color: #dc3545; font-weight: 600; margin-top: 5px;">⚠️ ${item['異常箇所']}</div>` : ''}
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+function showDetail(timestamp) {
+    const item = allHistory.find(h => h['登録日時'] === timestamp);
+    if (!item) return;
+    showEditModal(item, false);
+}
+
+function showEditModal(item, editMode) {
+    const ts = item['登録日時'];
+    
+    let html = `
+    <div id="detailModal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;overflow-y:auto;">
+      <div style="background:white;margin:20px auto;padding:25px;max-width:800px;border-radius:10px;" onclick="event.stopPropagation()">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+          <h2>${editMode ? '✏️ 点検を編集' : '📋 点検詳細'}</h2>
+          <span style="font-size:30px;cursor:pointer;" onclick="closeDetail()">&times;</span>
+        </div>`;
+
+    if (editMode) {
+        // 編集モード
+        html += `
+        <div class="section-title">基本情報</div>
+        <div class="info-grid">
+          <div class="form-group"><label>点検日</label><input type="date" id="ed_date" value="${item['点検日']}"></div>
+          <div class="form-group"><label>車両番号</label><input type="text" id="ed_vehicle" value="${item['車両番号']}"></div>
+          <div class="form-group"><label>行先</label><input type="text" id="ed_dest" value="${item['行先'] || ''}"></div>
+          <div class="form-group"><label>工番</label><input type="text" id="ed_project" value="${item['工番'] || ''}"></div>
+        </div>
+        <div class="section-title">運転・点検者</div>
+        <div class="info-grid">
+          <div class="form-group"><label>運転者</label><input type="text" id="ed_driver" value="${item['運転者']}"></div>
+          <div class="form-group"><label>点検者</label><input type="text" id="ed_inspector" value="${item['点検者']}"></div>
+        </div>
+        <div class="section-title">燃料・オイル・走行距離</div>
+        <div class="info-grid">
+          <div class="form-group"><label>燃料(L)</label><input type="number" id="ed_fuel" step="0.1" value="${item['燃料(L)'] || ''}"></div>
+          <div class="form-group"><label>オイル(L)</label><input type="number" id="ed_oil" step="0.1" value="${item['オイル(L)'] || ''}"></div>
+          <div class="form-group"><label>前回総距離(km)</label><input type="number" id="ed_prev" step="0.1" value="${item['前回総距離(km)'] || ''}" onchange="calcEditDist()"></div>
+          <div class="form-group"><label>今回総距離(km)</label><input type="number" id="ed_curr" step="0.1" value="${item['今回総距離(km)'] || ''}" onchange="calcEditDist()"></div>
+          <div class="form-group"><label>走行距離(km)</label><input type="number" id="ed_travel" step="0.1" value="${item['走行距離(km)'] || ''}" readonly class="auto-calc"></div>
+        </div>
+        <div class="form-group"><label>異常箇所</label><input type="text" id="ed_abnormal" value="${item['異常箇所'] || ''}"></div>
+        
+        <div class="section-title">点検項目</div>`;
+
+        inspectionSections.forEach((section, sIdx) => {
+            html += `<div class="inspection-section"><div class="section-header">${section.title}</div>
+            <table class="inspection-table"><thead><tr><th>点検箇所</th><th>判定</th></tr></thead><tbody>`;
+            
+            section.items.forEach((checkItem, iIdx) => {
+                const current = item[checkItem.name];
+                const okSel = current === 'OK' ? 'selected-ok' : '';
+                const ngSel = current === 'NG' ? 'selected-ng' : '';
+                html += `<tr>
+                  <td><strong>${checkItem.name}</strong><br><small style="color:#666">${checkItem.detail}</small></td>
+                  <td><div class="check-buttons">
+                    <button type="button" class="check-btn ${okSel}" data-eid="e_${sIdx}_${iIdx}" data-value="OK" onclick="selectEditCheck(this)">良好</button>
+                    <button type="button" class="check-btn ${ngSel}" data-eid="e_${sIdx}_${iIdx}" data-value="NG" onclick="selectEditCheck(this)">異常</button>
+                  </div></td>
+                </tr>`;
+            });
+            
+            html += '</tbody></table></div>';
+        });
+
+        html += `
+        <div style="display:flex;gap:10px;margin-top:20px;">
+          <button class="btn btn-success" onclick="saveEdit('${ts}')">💾 保存</button>
+          <button class="btn" style="background:#6c757d;color:white;" onclick="showEditModal(allHistory.find(h=>h['登録日時']==='${ts}'), false)">キャンセル</button>
+        </div>`;
+
+    } else {
+        // 閲覧モード
+        html += `
+        <div class="section-title">基本情報</div>
+        <div class="info-grid">
+          <div><strong>点検日:</strong> ${item['点検日']}</div>
+          <div><strong>車両番号:</strong> ${item['車両番号']}</div>
+          <div><strong>行先:</strong> ${item['行先'] || '-'}</div>
+          <div><strong>工番:</strong> ${item['工番'] || '-'}</div>
+        </div>
+        <div class="section-title">運転・点検者</div>
+        <div class="info-grid">
+          <div><strong>運転者:</strong> ${item['運転者']}</div>
+          <div><strong>点検者:</strong> ${item['点検者']}</div>
+        </div>
+        <div class="section-title">燃料・オイル・走行距離</div>
+        <div class="info-grid">
+          <div><strong>燃料:</strong> ${item['燃料(L)'] || 0} L</div>
+          <div><strong>オイル:</strong> ${item['オイル(L)'] || 0} L</div>
+          <div><strong>前回総距離:</strong> ${item['前回総距離(km)'] || 0} km</div>
+          <div><strong>今回総距離:</strong> ${item['今回総距離(km)'] || 0} km</div>
+          <div><strong>走行距離:</strong> ${item['走行距離(km)'] || 0} km</div>
+        </div>
+        ${item['異常箇所'] ? `<div style="background:#fff3cd;padding:12px;border-radius:6px;margin:15px 0;"><strong>異常箇所:</strong> ${item['異常箇所']}</div>` : ''}
+        
+        <div class="section-title">点検結果</div>`;
+
+        inspectionSections.forEach(section => {
+            html += `<h4 style="margin:15px 0 10px 0;color:#667eea;">${section.title}</h4>
+            <table class="inspection-table"><tbody>`;
+            section.items.forEach(checkItem => {
+                const result = item[checkItem.name];
+                const style = result === 'NG' ? 'color:#dc3545;font-weight:bold;' : '';
+                html += `<tr>
+                  <td><strong>${checkItem.name}</strong></td>
+                  <td style="${style}">${result === 'OK' ? '✓ 良好' : result === 'NG' ? '✗ 異常' : '-'}</td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+        });
+
+        html += `
+        <div style="display:flex;gap:10px;margin-top:20px;">
+          <button class="btn btn-primary" onclick="showEditModal(allHistory.find(h=>h['登録日時']==='${ts}'), true)">✏️ 編集</button>
+          <button class="btn btn-danger" onclick="deleteInspection('${ts}')">🗑️ 削除</button>
+          <button class="btn" style="background:#6c757d;color:white;" onclick="closeDetail()">閉じる</button>
+        </div>`;
+    }
+
+    html += '</div></div>';
+
+    closeDetail();
+    document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function selectEditCheck(button) {
+    const eid = button.dataset.eid;
+    document.querySelectorAll(`[data-eid="${eid}"]`).forEach(btn => {
+        btn.classList.remove('selected-ok', 'selected-ng');
+    });
+    button.classList.add(button.dataset.value === 'OK' ? 'selected-ok' : 'selected-ng');
+}
+
+function calcEditDist() {
+    const prev = parseFloat(document.getElementById('ed_prev').value) || 0;
+    const curr = parseFloat(document.getElementById('ed_curr').value) || 0;
+    if (curr >= prev && curr > 0) {
+        document.getElementById('ed_travel').value = (curr - prev).toFixed(1);
+    }
+}
+
+async function saveEdit(timestamp) {
+    const itemIndex = allHistory.findIndex(h => h['登録日時'] === timestamp);
+    if (itemIndex === -1) return;
+
+    const item = allHistory[itemIndex];
+
+    // 基本情報を更新
+    item['点検日'] = document.getElementById('ed_date').value;
+    item['車両番号'] = document.getElementById('ed_vehicle').value;
+    item['行先'] = document.getElementById('ed_dest').value;
+    item['工番'] = document.getElementById('ed_project').value;
+    item['運転者'] = document.getElementById('ed_driver').value;
+    item['点検者'] = document.getElementById('ed_inspector').value;
+    item['燃料(L)'] = document.getElementById('ed_fuel').value;
+    item['オイル(L)'] = document.getElementById('ed_oil').value;
+    item['前回総距離(km)'] = document.getElementById('ed_prev').value;
+    item['今回総距離(km)'] = document.getElementById('ed_curr').value;
+    item['走行距離(km)'] = document.getElementById('ed_travel').value;
+    item['異常箇所'] = document.getElementById('ed_abnormal').value;
+
+    // 点検項目を更新
+    let hasAbnormal = false;
+    inspectionSections.forEach((section, sIdx) => {
+        section.items.forEach((checkItem, iIdx) => {
+            const selectedBtn = document.querySelector(`[data-eid="e_${sIdx}_${iIdx}"].selected-ok, [data-eid="e_${sIdx}_${iIdx}"].selected-ng`);
+            if (selectedBtn) {
+                item[checkItem.name] = selectedBtn.dataset.value;
+                if (selectedBtn.dataset.value === 'NG') hasAbnormal = true;
+            }
+        });
+    });
+
+    item['異常有無'] = hasAbnormal ? '異常あり' : '正常';
+    allHistory[itemIndex] = item;
+
+    // スプレッドシートに更新を送信
+    try {
+        const response = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                action: 'update', 
+                timestamp: timestamp, 
+                data: item 
+            })
+        });
+        
+        const result = await response.json();
+        
+        if(result.status === 'updated') {
+            alert('✓ 更新しました！');
+        } else {
+            alert('更新に失敗しました: ' + (result.status || '不明なエラー'));
+        }
+    } catch(e) {
+        alert('エラー: ' + e.message);
+        console.error('更新エラー:', e);
+    }
+
+    closeDetail();
+    setTimeout(() => loadHistory(), 1500);
+}
+
+async function deleteInspection(timestamp) {
+    if (!confirm('この点検記録を削除しますか？')) return;
+
+    // スプレッドシートに削除を送信
+    try {
+        const response = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                action: 'delete', 
+                timestamp: timestamp 
+            })
+        });
+        
+        const result = await response.json();
+        
+        if(result.status === 'deleted') {
+            // ローカルから削除
+            allHistory = allHistory.filter(h => h['登録日時'] !== timestamp);
+            alert('削除しました');
+            closeDetail();
+            setTimeout(() => loadHistory(), 1500);
+        } else {
+            alert('削除に失敗しました: ' + (result.status || '不明なエラー'));
+        }
+    } catch(e) {
+        alert('エラー: ' + e.message);
+        console.error('削除エラー:', e);
+    }
+}
+
+function closeDetail() {
+    const modal = document.getElementById('detailModal');
+    if (modal) modal.remove();
+}
+
+async function searchHistory() {
+    const searchDate = document.getElementById('searchDate').value;
+    const searchVehicle = document.getElementById('searchVehicle').value;
+    const searchDriver = document.getElementById('searchDriver').value;
+    
+    let filtered = allHistory;
+    
+    if (searchDate) {
+        filtered = filtered.filter(item => item['点検日'] === searchDate);
+    }
+    if (searchVehicle) {
+        filtered = filtered.filter(item => item['車両番号'].includes(searchVehicle));
+    }
+    if (searchDriver) {
+        filtered = filtered.filter(item => item['運転者'].includes(searchDriver));
+    }
+    
+    displayHistory(filtered);
+}
+
+function exportMonthlyExcel() {
+    const monthStr = document.getElementById('exportMonth').value;
+    if (!monthStr) {
+        alert('出力する月を選択してください');
+        return;
+    }
+    
+    const [year, month] = monthStr.split('-');
+    const daysInMonth = new Date(year, month, 0).getDate();
+    
+    // スプレッドシートとローカルの両方からデータを取得
+    const monthData = allHistory.filter(item => {
+        const itemDate = item['点検日'];
+        return itemDate && itemDate.startsWith(monthStr);
+    });
+    
+    if (monthData.length === 0) {
+        alert('選択した月のデータがありません');
+        return;
+    }
+    
+    // 車両ごとにグループ化
+    const vehicleGroups = {};
+    monthData.forEach(item => {
+        const vehicleNum = item['車両番号'];
+        if (!vehicleGroups[vehicleNum]) {
+            vehicleGroups[vehicleNum] = [];
+        }
+        vehicleGroups[vehicleNum].push(item);
+    });
+    
+    const wb = XLSX.utils.book_new();
+    
+    // 各車両ごとにシート作成
+    Object.keys(vehicleGroups).forEach(vehicleNum => {
+        const vehicleData = vehicleGroups[vehicleNum];
+        
+        // データを日付でマッピング
+        const dataByDate = {};
+        vehicleData.forEach(item => {
+            const day = parseInt(item['点検日'].split('-')[2]);
+            dataByDate[day] = item;
+        });
+        
+        // シートデータ作成（縦書き形式）
+        const sheetData = [];
+        sheetData.push([`${year}年${month}月分 日常点検表 - ${vehicleNum}`]);
+        sheetData.push([]);
+        sheetData.push(['月日', '行先', '工番', '燃料(L)', 'オイル(L)', '前回総距離(km)', '今回総距離(km)', '走行(km)', '運転者', '異常有無', '備考']);
+        
+        // 日次データ（1日〜31日を行として）
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dayData = dataByDate[day];
+            if (dayData) {
+                const abnormalStatus = dayData['異常有無'] || '正常';
+                sheetData.push([
+                    `${month}/${day}`,
+                    dayData['行先'] || '',
+                    dayData['工番'] || '',
+                    dayData['燃料(L)'] || '',
+                    dayData['オイル(L)'] || '',
+                    dayData['前回総距離(km)'] || '',
+                    dayData['今回総距離(km)'] || '',
+                    dayData['走行距離(km)'] || '',
+                    dayData['運転者'] || '',
+                    abnormalStatus,
+                    dayData['異常箇所'] || ''
+                ]);
+            } else {
+                sheetData.push([`${month}/${day}`, '', '', '', '', '', '', '', '', '', '']);
+            }
+        }
+        
+        // 空行
+        sheetData.push([]);
+        
+        // 工番別稼働日数集計
+        sheetData.push(['工番別稼働日数']);
+        sheetData.push(['工番', '稼働日数']);
+        
+        const projectCounts = {};
+        vehicleData.forEach(item => {
+            const projectNum = item['工番'];
+            if (projectNum) {
+                projectCounts[projectNum] = (projectCounts[projectNum] || 0) + 1;
+            }
+        });
+        
+        Object.keys(projectCounts).sort().forEach(project => {
+            sheetData.push([project, projectCounts[project] + '日']);
+        });
+        
+        const ws = XLSX.utils.aoa_to_sheet(sheetData);
+        
+        // 列幅設定（A4縦に収まるように調整）
+        ws['!cols'] = [
+            { wch: 7 },   // 月日
+            { wch: 12 },  // 行先
+            { wch: 10 },  // 工番
+            { wch: 7 },   // 燃料
+            { wch: 7 },   // オイル
+            { wch: 10 },  // 前回総距離
+            { wch: 10 },  // 今回総距離
+            { wch: 8 },   // 走行
+            { wch: 10 },  // 運転者
+            { wch: 9 },   // 異常有無
+            { wch: 18 }   // 備考
+        ];
+        
+        const sheetName = vehicleNum.substring(0, 31);
+        XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    });
+    
+    // ファイル出力
+    XLSX.writeFile(wb, `日常点検表_${year}年${month}月.xlsx`);
+    alert('Excelファイルをダウンロードしました！');
+}
+
+function switchTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+    
+    event.target.classList.add('active');
+    document.getElementById('tab-' + tab).classList.add('active');
+    
+    if (tab === 'history') {
+        loadHistory();
+    }
+}
+    </script>
+</body>
+</html>
